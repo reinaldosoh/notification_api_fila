@@ -36,16 +36,23 @@ async function buildApp() {
   await app.register(adminRoutes, { prefix: "/admin" });
 
   const boardAdapter = initBoard();
-
-  await app.register(
-    async (scoped) => {
-      scoped.addHook("onRequest", scoped.basicAuth);
-      await scoped.register(boardAdapter.registerPlugin(), { prefix: "/" });
-    },
-    { prefix: "/admin/queues" }
-  );
-
   await bootstrapQueuesFromDb();
+
+  app.addHook("onRequest", (request, reply, done) => {
+    if (request.url.startsWith("/admin/queues")) {
+      app.basicAuth(request, reply, (err) => done(err));
+      return;
+    }
+    done();
+  });
+
+  await app.register(boardAdapter.registerPlugin(), {
+    prefix: "/admin/queues",
+  });
+
+  app.get("/", async (_req, reply) => {
+    reply.redirect("/admin/queues");
+  });
 
   return app;
 }
