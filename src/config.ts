@@ -19,7 +19,14 @@ export const config = {
   adminUser: process.env.ADMIN_USER ?? "admin",
   adminPassword: required("ADMIN_PASSWORD"),
 
-  databaseUrl: required("DATABASE_URL"),
+  databaseUrl: process.env.DATABASE_URL ?? null,
+  pg: {
+    host: process.env.PGHOST ?? null,
+    port: process.env.PGPORT ? Number(process.env.PGPORT) : 5432,
+    user: process.env.PGUSER ?? null,
+    password: process.env.PGPASSWORD ?? null,
+    database: process.env.PGDATABASE ?? null,
+  },
   redisUrl: required("REDIS_URL"),
 
   delivery: {

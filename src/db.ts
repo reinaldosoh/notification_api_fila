@@ -1,10 +1,20 @@
-import { Pool } from "pg";
+import { Pool, type PoolConfig } from "pg";
 import { config } from "./config.js";
 
-export const pool = new Pool({
-  connectionString: config.databaseUrl,
-  max: 10,
-});
+function buildPoolConfig(): PoolConfig {
+  const { host, port, user, password, database } = config.pg;
+  if (host && user && password && database) {
+    return { host, port, user, password, database, max: 10 };
+  }
+  if (config.databaseUrl) {
+    return { connectionString: config.databaseUrl, max: 10 };
+  }
+  throw new Error(
+    "Configuração Postgres ausente. Defina PGHOST/PGUSER/PGPASSWORD/PGDATABASE ou DATABASE_URL."
+  );
+}
+
+export const pool = new Pool(buildPoolConfig());
 
 export type Webhook = {
   id: string;
