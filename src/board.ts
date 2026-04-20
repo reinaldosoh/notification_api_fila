@@ -9,6 +9,9 @@ let adapter: FastifyAdapter | null = null;
 export function initBoard() {
   adapter = new FastifyAdapter();
   adapter.setBasePath("/admin/queues");
+  adapter.setUIConfig({
+    boardTitle: "API NOTIFICATION UBIZ",
+  });
   api = createBullBoard({ queues: [], serverAdapter: adapter });
   return adapter;
 }

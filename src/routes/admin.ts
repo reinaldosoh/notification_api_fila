@@ -47,7 +47,7 @@ export async function adminRoutes(app: FastifyInstance) {
     );
 
     const wh = rows[0];
-    if (wh.active) await ensureWebhookQueue(id);
+    if (wh.active) await ensureWebhookQueue(id, wh.name);
 
     return reply.code(201).send({
       ...wh,
@@ -100,7 +100,7 @@ export async function adminRoutes(app: FastifyInstance) {
     if (!rows[0]) return reply.code(404).send({ error: "não encontrado" });
 
     if (rows[0].active) {
-      await ensureWebhookQueue(rows[0].id);
+      await ensureWebhookQueue(rows[0].id, rows[0].name);
     } else {
       await removeWebhookQueue(rows[0].id);
     }

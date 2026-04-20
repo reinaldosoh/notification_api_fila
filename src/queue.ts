@@ -32,13 +32,23 @@ export type DeliveryJob = {
   webhookId: string;
 };
 
-const QUEUE_PREFIX = "wh";
+function sanitize(input: string): string {
+  return input
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40);
+}
 
-function queueName(webhookId: string) {
-  return `${QUEUE_PREFIX}-${webhookId}`;
+function queueName(name: string, webhookId: string) {
+  const safe = sanitize(name) || "webhook";
+  return `${safe}-${webhookId}`;
 }
 
 type Bundle = {
+  name: string;
   queue: Queue<DeliveryJob>;
   worker: Worker<DeliveryJob>;
   events: QueueEvents;
@@ -53,31 +63,30 @@ const defaultJobOptions: JobsOptions = {
   removeOnFail: { age: 60 * 60 * 24 * 30 },
 };
 
-export function getQueue(webhookId: string): Queue<DeliveryJob> {
-  const b = bundles.get(webhookId);
-  if (!b) {
-    throw new Error(`Fila ainda não inicializada para webhook ${webhookId}`);
-  }
-  return b.queue;
-}
-
 export function listQueues(): Queue[] {
   return [...bundles.values()].map((b) => b.queue);
 }
 
-export async function ensureWebhookQueue(webhookId: string): Promise<Queue<DeliveryJob>> {
+export async function ensureWebhookQueue(
+  webhookId: string,
+  displayName: string
+): Promise<Queue<DeliveryJob>> {
+  const desired = queueName(displayName, webhookId);
   const existing = bundles.get(webhookId);
-  if (existing) return existing.queue;
+  if (existing && existing.name === desired) {
+    return existing.queue;
+  }
+  if (existing && existing.name !== desired) {
+    await removeWebhookQueue(webhookId);
+  }
 
-  const name = queueName(webhookId);
-
-  const queue = new Queue<DeliveryJob>(name, {
+  const queue = new Queue<DeliveryJob>(desired, {
     connection: redis,
     defaultJobOptions,
   });
 
   const worker = new Worker<DeliveryJob>(
-    name,
+    desired,
     async (job) => {
       return deliver(job.data, job.attemptsMade + 1);
     },
@@ -103,9 +112,9 @@ export async function ensureWebhookQueue(webhookId: string): Promise<Queue<Deliv
     );
   });
 
-  const events = new QueueEvents(name, { connection: redis.duplicate() });
+  const events = new QueueEvents(desired, { connection: redis.duplicate() });
 
-  bundles.set(webhookId, { queue, worker, events });
+  bundles.set(webhookId, { name: desired, queue, worker, events });
   boardAddQueue(queue);
   return queue;
 }
@@ -122,11 +131,11 @@ export async function removeWebhookQueue(webhookId: string) {
 }
 
 export async function bootstrapQueuesFromDb() {
-  const { rows } = await pool.query<{ id: string }>(
-    `SELECT id FROM webhooks WHERE active = TRUE`
+  const { rows } = await pool.query<{ id: string; name: string }>(
+    `SELECT id, name FROM webhooks WHERE active = TRUE`
   );
   for (const row of rows) {
-    await ensureWebhookQueue(row.id);
+    await ensureWebhookQueue(row.id, row.name);
   }
 }
 

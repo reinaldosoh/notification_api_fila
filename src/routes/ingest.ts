@@ -4,13 +4,14 @@ import { ensureWebhookQueue } from "../queue.js";
 
 type WebhookRow = {
   id: string;
+  name: string;
   active: boolean;
 };
 
 export async function ingestRoutes(app: FastifyInstance) {
   app.post<{ Params: { id: string } }>("/w/:id", async (req, reply) => {
     const { rows } = await pool.query<WebhookRow>(
-      `SELECT id, active FROM webhooks WHERE id = $1`,
+      `SELECT id, name, active FROM webhooks WHERE id = $1`,
       [req.params.id]
     );
     const webhook = rows[0];
@@ -35,7 +36,7 @@ export async function ingestRoutes(app: FastifyInstance) {
     );
     const deliveryId = insert.rows[0].id;
 
-    const queue = await ensureWebhookQueue(webhook.id);
+    const queue = await ensureWebhookQueue(webhook.id, webhook.name);
     await queue.add(
       `delivery-${deliveryId}`,
       { deliveryId, webhookId: webhook.id },
