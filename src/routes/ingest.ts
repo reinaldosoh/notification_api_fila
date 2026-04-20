@@ -37,9 +37,9 @@ export async function ingestRoutes(app: FastifyInstance) {
 
     const queue = await ensureWebhookQueue(webhook.id);
     await queue.add(
-      `delivery:${deliveryId}`,
+      `delivery-${deliveryId}`,
       { deliveryId, webhookId: webhook.id },
-      { jobId: String(deliveryId) }
+      { jobId: `d-${deliveryId}` }
     );
 
     return reply.code(202).send({
