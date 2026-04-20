@@ -50,6 +50,11 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Disparar deploy no EasyPanel
-        if: success()
+        if: ${{ success() && secrets.EASYPANEL_DEPLOY_URL != '' }}
         run: |
           curl -fsSL -X POST "${{ secrets.EASYPANEL_DEPLOY_URL }}"
+
+      - name: Aviso - webhook nao configurado
+        if: ${{ success() && secrets.EASYPANEL_DEPLOY_URL == '' }}
+        run: |
+          echo "EASYPANEL_DEPLOY_URL nao configurado. Deploy manual no EasyPanel."
