@@ -35,7 +35,7 @@ export type DeliveryJob = {
 const QUEUE_PREFIX = "wh";
 
 function queueName(webhookId: string) {
-  return `${QUEUE_PREFIX}:${webhookId}`;
+  return `${QUEUE_PREFIX}-${webhookId}`;
 }
 
 type Bundle = {
