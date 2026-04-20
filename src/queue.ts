@@ -5,10 +5,27 @@ import { deliver } from "./delivery.js";
 import { pool } from "./db.js";
 import { boardAddQueue, boardRemoveQueue } from "./board.js";
 
-export const redis = new IORedis(config.redisUrl, {
-  maxRetriesPerRequest: null,
-  enableReadyCheck: true,
-});
+function buildRedis(): IORedis {
+  const base = { maxRetriesPerRequest: null, enableReadyCheck: true } as const;
+  if (config.redis.host) {
+    return new IORedis({
+      host: config.redis.host,
+      port: config.redis.port,
+      username: config.redis.username,
+      password: config.redis.password,
+      db: config.redis.db,
+      ...base,
+    });
+  }
+  if (config.redisUrl) {
+    return new IORedis(config.redisUrl, base);
+  }
+  throw new Error(
+    "Configuração Redis ausente. Defina REDIS_HOST/REDIS_PASSWORD ou REDIS_URL."
+  );
+}
+
+export const redis = buildRedis();
 
 export type DeliveryJob = {
   deliveryId: number;
