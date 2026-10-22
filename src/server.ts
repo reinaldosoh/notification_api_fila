@@ -8,6 +8,7 @@ import { adminRoutes } from "./routes/admin.js";
 import { ingestRoutes } from "./routes/ingest.js";
 import { healthRoutes } from "./routes/health.js";
 import { initBoard } from "./board.js";
+import { startRetention } from "./retention.js";
 
 async function buildApp() {
   const app = Fastify({
@@ -59,10 +60,12 @@ async function buildApp() {
 
 async function main() {
   const app = await buildApp();
+  const stopRetention = startRetention(app.log);
 
   const shutdown = async (signal: string) => {
     app.log.info(`Recebido ${signal}, encerrando...`);
     try {
+      stopRetention();
       await app.close();
       await shutdownAllQueues();
       await pool.end();

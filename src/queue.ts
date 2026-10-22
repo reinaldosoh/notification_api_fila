@@ -1,4 +1,4 @@
-import { Queue, Worker, QueueEvents, type JobsOptions } from "bullmq";
+import { Queue, Worker, type JobsOptions } from "bullmq";
 import IORedis from "ioredis";
 import { config } from "./config.js";
 import { deliver } from "./delivery.js";
@@ -51,7 +51,6 @@ type Bundle = {
   name: string;
   queue: Queue<DeliveryJob>;
   worker: Worker<DeliveryJob>;
-  events: QueueEvents;
 };
 
 const bundles = new Map<string, Bundle>();
@@ -60,7 +59,7 @@ const defaultJobOptions: JobsOptions = {
   attempts: config.delivery.maxAttempts,
   backoff: { type: "exponential", delay: 2000 },
   removeOnComplete: { age: 60 * 60 * 24 * 7, count: 5000 },
-  removeOnFail: { age: 60 * 60 * 24 * 30 },
+  removeOnFail: { age: 60 * 60 * 24 * 30, count: 5000 },
 };
 
 export function listQueues(): Queue[] {
@@ -112,9 +111,7 @@ export async function ensureWebhookQueue(
     );
   });
 
-  const events = new QueueEvents(desired, { connection: redis.duplicate() });
-
-  bundles.set(webhookId, { name: desired, queue, worker, events });
+  bundles.set(webhookId, { name: desired, queue, worker });
   boardAddQueue(queue);
   return queue;
 }
@@ -124,7 +121,6 @@ export async function removeWebhookQueue(webhookId: string) {
   if (!b) return;
   boardRemoveQueue(b.queue.name);
   await b.worker.close();
-  await b.events.close();
   await b.queue.obliterate({ force: true }).catch(() => {});
   await b.queue.close();
   bundles.delete(webhookId);
@@ -143,7 +139,6 @@ export async function shutdownAllQueues() {
   const tasks: Promise<unknown>[] = [];
   for (const b of bundles.values()) {
     tasks.push(b.worker.close());
-    tasks.push(b.events.close());
     tasks.push(b.queue.close());
   }
   await Promise.allSettled(tasks);

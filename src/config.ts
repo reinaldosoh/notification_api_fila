@@ -40,4 +40,11 @@ export const config = {
     timeoutMs: Number(process.env.DELIVERY_TIMEOUT_MS ?? 30000),
     maxAttempts: Number(process.env.DELIVERY_MAX_ATTEMPTS ?? 5),
   },
+
+  retention: {
+    // Dias de histórico em `deliveries` (concluídas/falhas). 0 desliga a purga.
+    deliveriesDays: Number(process.env.DELIVERIES_RETENTION_DAYS ?? 30),
+    purgeIntervalMs: Number(process.env.DELIVERIES_PURGE_INTERVAL_MS ?? 60 * 60 * 1000),
+    purgeBatch: Number(process.env.DELIVERIES_PURGE_BATCH ?? 5000),
+  },
 } as const;
